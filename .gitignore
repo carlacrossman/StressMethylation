@@ -9,3 +9,4 @@
 *.docx
 *.stan
 mcmcChains.csv
+KWdatabase*
