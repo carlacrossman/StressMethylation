@@ -1,6 +1,9 @@
-#-----------------------#
-# Read the data into R  #
-#-----------------------#
+#########################################################
+### 	 	 RUN BAYESIAN MODEL ON FOUR LOCI 		  ###
+###                    			                      ###
+#########################################################
+
+### --- Load Libraries --- ###
 library(ggplot2)
 library(rstan)
 library(ggridges)
@@ -12,10 +15,10 @@ setwd("C:/Users/c_cro/Documents/PhD/Epigenetics/Methylation/results")
 source("plotPost.R")
 options(mc.cores = parallel::detectCores())
 
-#--- Load Data File ---#
+### --- Load Data File --- ###
 orca_all = read.table("orcaData.csv", header = TRUE, sep = ",")
 
-#--- Remove extra loci and sites located downstream from the TSS ---#
+### --- Remove extra loci and sites located downstream from the TSS --- ###
 orca4 = orca_all[which(orca_all$locus == "CRF" | orca_all$locus == "ACTB" | orca_all$locus == "BDNF" | orca_all$locus == "NP"),]
 orca = orca4[-which(orca4$site == "BDNF_106" | orca4$site == "BDNF_145" | orca4$site == "BDNF_154" | orca4$site == "BDNF_167" | orca4$site == "BDNF_172" | orca4$site == "BDNF_192" | orca4$site == "BDNF_208" | orca4$site == "BDNF_213" |
                       orca4$site == "NP_196" | orca4$site == "CRF_135" | orca4$site == "CRF_148" | orca4$site == "CRF_236" | orca4$site == "CRF_242" | orca4$site == "CRF_257" | orca4$site == "CRF_260" | orca4$site == "CRF_265" | 
@@ -26,51 +29,49 @@ orca$site = droplevels(orca$site)
 orca$ind = droplevels(orca$ind)
 
 
-#------------------------------#
-# Prepare the data for Stan    #
-#------------------------------#
-#--- Standardize AGE ---#
+########################### Prepare the data for Stan ###########################  
+
+### --- Standardize AGE --- ###
 age     = orca$age
 ageMean = mean(age)
 ageSD   = sd(age)
 zage    = (age - ageMean) / ageSD
 
-#--- Standardize METHYLATION C_Ratios ---#
+### --- Standardize Percent Methylation (C_Ratios) --- ###
 permeth     = orca$C_Ratio
 permethMean = mean(permeth)
 permethSD   = sd(permeth)
 zpermeth    = (permeth - permethMean) / permethSD
 N = length(permeth)
 
-#---Categorical Sex Data  --#
+### --- Categorical Sex Data --- ###
 sex = as.numeric(orca$Sex)
 sexNames = levels(orca$Sex)
 nsexLevels = length(unique(orca$Sex))
 
-#--- Categorical Population Data ---#
+### --- Categorical Population Data --- ###
 pop = as.numeric(orca$Population)
 popNames = levels(orca$Population)
 npopLevels = length(unique(orca$Population))
 
-#--- Categorical Site Data ---#
+### --- Categorical Site Data --- ###
 site = as.numeric(as.factor(orca$site))
 siteNames = levels(orca$site)
 nsiteLevels = length(unique(orca$site))
 
-#--- Categorical Locus Data ---#
+### --- Categorical Locus Data --- ###
 locus = as.numeric(orca$locus)
 locusNames = levels(orca$locus)
 nlocusLevels = length(unique(orca$locus))
 
-#--- Categorical Locus Data ---#
+### --- Categorical Locus Data --- ###
 ind = as.numeric(orca$ID)
 indNames = levels(orca$ID)
 nindLevels = length(unique(orca$ID))
 
 
-#-----------------------------#
-# Create a data list for STAN #
-#-----------------------------#
+########################### Create a data list for Stan ###########################
+
 dataList = list(
   permeth = zpermeth,
   pop = pop,
@@ -86,10 +87,8 @@ dataList = list(
 )
 
 
-#-----------------------------#
-# Define the model and write  #
-# a string for Stan           #
-#-----------------------------#
+############################ Define the model & write a string for Stan ###########################
+
 modelstring = "
   data {
     int N;                  // Sample size
@@ -191,9 +190,9 @@ modelstring = "
 writeLines(modelstring, con = "orca_site_model.stan")
 
 
-#--------------------------#
-#     run STAN             #
-#--------------------------#
+################################################
+###              RUN STAN                    ###
+################################################
 stanFit <- stan(file = "orca_site_model.stan", 
                 data = dataList, 
                 pars = c("bage", "bpop", "bsex", "bind", "bsite", "bpopsite", "sigma", "permeth_pred"),
@@ -202,9 +201,8 @@ stanFit <- stan(file = "orca_site_model.stan",
                 chains = 3)
 
 
-#-------------------------#
-# Check MCMC Performance  #
-#-------------------------#
+############################ Check MCMC Performance ############################
+
 print(stanFit)  
 stan_trace(stanFit, pars = c("bage", "bsex", "bpop"), inc_warmup = TRUE)
 stan_trace(stanFit, pars = "bind", inc_warmup = TRUE)
@@ -212,9 +210,8 @@ stan_trace(stanFit, pars = "bpopsite", inc_warmup = TRUE)
 stan_trace(stanFit, pars = "sigma", inc_warmup = TRUE)
 
 
-#-----------------------------------#
-#  Plot Results With Stan Functions #
-#-----------------------------------#
+############################ Plot Results With Stan Functions ############################
+
 stan_plot(stanFit, par = c("bage", "bsex", "bpop"))
 stan_plot(stanFit, par = "bind")
 stan_plot(stanFit, par = "bsite")
@@ -225,15 +222,9 @@ s <- stan_plot(stanFit, par = c("bage", "bsex", "bpop"))
 s + scale_y_discrete(labels=c("Age","Female","Male","Northern Resident","Southern Resident"))
 s
 
-#############################################
-#---     Posterior Predictive Check      ---#
-#############################################
+############################ Posterior Predictive Check ############################
 
-#-----------------------------------#
-#      Extract Predicted Data       #         
-#-----------------------------------#
-
-#--- Extract the predictions ---#
+### --- Extract the predictions --- ###
 mcmcChains = as.data.frame(stanFit)
 write.csv(mcmcChains,'mcmcChains.csv')
 
@@ -244,44 +235,35 @@ for (i in 1:N) {
   zypred[, i] = mcmcChains[, paste("permeth_pred[", i, "]", sep = "")]
 }
 
-#--- Mean expected value for record ---#
+### --- Mean expected value for record --- ###
 ypredMean = apply(zypred, 2, mean)
 
-#--- Upper and lower expected 95% HDI for each visit ---#
+### --- Upper and lower expected 95% HDI for each visit --- ###
 ypredLow  = apply(zypred, 2, quantile, probs = 0.025)
 ypredHigh = apply(zypred, 2, quantile, probs = 0.975)
 
 
-#-----------------------------------#
-#          Model Fit Plots          #         
-#-----------------------------------#
+############################ Model Fit Plots ############################         
 
-#--- Plot mean predicted values ---#
+### --- Plot mean predicted values --- ###
 par(mfrow = c(1, 1))
 record = 1:500
 
 subsample = sample(1:N, size = 500, replace=FALSE)
-
-
-
 dotchart(ypredMean[subsample], xlim = c(-6, 6), xlab = "Standardized Percent Methylation", ylab = "Sample")
-#--- Add HDIs ---#
+
+### --- Add HDIs --- ###
 segments(x0 = ypredLow[subsample], y0 = record, x1 = ypredHigh[subsample], y1 = record)
-#--- Add observed values ---#
+### --- Add observed values --- ###
 points(x = zpermeth[subsample], y = record, pch = 16, col = rgb(0, 0.8, 1, 0.6))
 
 
 ################################################################
-#--------------------------------------------------------------#
-#                PLOTS TO ASSESS EFFECTS                       #
-#--------------------------------------------------------------#
+###               PLOTS TO ASSESS EFFECTS                    ###
 ################################################################
 
-
-#-----------------------------------#
-#  Plot Results With Stan Functions #
-#          For Site Effects         #
-#-----------------------------------#
+############################ Plot Results With Stan Functions ############################
+############################         For Site Effects         ############################
 
 actb<-c(which(startsWith(siteNames,"ACTB")))
 bdnf<-c(which(startsWith(siteNames,"BDNF")))
@@ -313,10 +295,9 @@ stan_plot(stanFit, par = c(bdnf_sites))
 stan_plot(stanFit, par = c(crf_sites))
 stan_plot(stanFit, par = c(np_sites))
 
-#-----------------------------------#
-#  Plot Results With Stan Functions #
-#        For Pop*Site Effects       #
-#-----------------------------------#
+
+############################ Plot Results With Stan Functions ############################
+############################        For Pop*Site Effects      ############################
 
 
 actb_ps<-c()
