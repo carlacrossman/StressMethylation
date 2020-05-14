@@ -10,7 +10,6 @@ library(dplyr)
 library(tidyr)
 library(ggpubr)
 
-setwd("C:/Users/c_cro/Documents/PhD/Epigenetics/Methylation/results")
 options(mc.cores = parallel::detectCores())
 mcmcChains = read.csv("mcmcChains.csv")
 chainLength = length(mcmcChains[, 1])
@@ -21,17 +20,7 @@ chainLength = length(mcmcChains[, 1])
 #####################################################
 
 ### --- Load Data File --- ###
-orca_all = read.table("orcaData.csv", header = TRUE, sep = ",")
-
-### --- Remove extra loci and sites located downstream from the TSS --- ###
-orca4 = orca_all[which(orca_all$locus == "CRF" | orca_all$locus == "ACTB" | orca_all$locus == "BDNF" | orca_all$locus == "NP"),]
-orca = orca4[-which(orca4$site == "BDNF_106" | orca4$site == "BDNF_145" | orca4$site == "BDNF_154" | orca4$site == "BDNF_167" | orca4$site == "BDNF_172" | orca4$site == "BDNF_192" | orca4$site == "BDNF_208" | orca4$site == "BDNF_213" |
-                      orca4$site == "NP_196" | orca4$site == "CRF_135" | orca4$site == "CRF_148" | orca4$site == "CRF_236" | orca4$site == "CRF_242" | orca4$site == "CRF_257" | orca4$site == "CRF_260" | orca4$site == "CRF_265" | 
-                      orca4$site == "CRF_270" | orca4$site == "CRF_286" | orca4$site == "CRF_305" | orca4$site == "CRF_313" | orca4$site == "CRF_319" | orca4$site == "CRF_321"  ),]
-
-orca$locus = droplevels(orca$locus)
-orca$site = droplevels(orca$site)
-orca$ind = droplevels(orca$ind)
+orca = read.table("orca_data_4loci.csv", header = TRUE, sep = ",")
 siteNames = levels(orca$site)
 
 
